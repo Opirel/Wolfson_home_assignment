@@ -1,0 +1,28 @@
+# Ignore database and pgAdmin data directories
+db-data/
+pgadmin-data/
+
+# Ignore environment variable files
+.env
+
+# Ignore SQL dumps and sensitive data files
+*.dump
+globals.sql
+init.sql
+
+# Ignore OS and editor files
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+
+# Ignore Python cache (if using Python)
+__pycache__/
+*.pyc
+
+# Ignore node modules (if using Node.js)
+node_modules/
+
+# Ignore VS Code settings
+.vscode/

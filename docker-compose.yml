@@ -1,0 +1,38 @@
+services:
+  database:
+    image: 'postgres:latest'
+    container_name: WomensDeptCont
+    ports:
+      - 15432:5432
+    env_file:
+      - .env
+    networks:
+      - postgres-network
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./conf/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./conf/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+  
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - 15433:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    depends_on:
+      - database
+    networks:
+      - postgres-network
+    volumes:
+      - ${PWD}/pgadmin-data/:/var/lib/pgadmin/
+    
+
+
+networks: 
+  postgres-network:
+    driver: bridge
+
+volumes:
+  pgdata:
