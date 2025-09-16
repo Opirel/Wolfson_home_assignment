@@ -1,5 +1,17 @@
 # Wolfson Home Assignment
 
+# before we start, i want to share base assumptions and premises:
+
+# 1. i assume that you have docker installed and running
+
+# 2. i assume that you have basic knowledge of docker and docker-compose
+
+# 3. i assume that you have a code editor installed (like VSCode)
+
+# 4. for the sake of simplicity, i assumed there are no surgeries in this department, treatment plans are straightforward, blood work and analysis is not taken and the focus is on patient management and basic medical records. if this were a real-world application, the schema would be more complex and would require additional tables and relationships.
+
+
+
 This project provides a ready-to-use PostgreSQL database and pgAdmin setup using Docker Compose. It includes all schema and data needed for the `WomensDeptDB` database.
 
 ---
@@ -15,18 +27,17 @@ This project provides a ready-to-use PostgreSQL database and pgAdmin setup using
 
 1. **Clone the repository:**
     ```powershell
-    git clone <your-repo-url>
-    cd WomensDeptAssignment
+    git clone https://github.com/Opirel/Wolfson_home_assignment.git
     ```
 
 2. **Configure environment variables:**
-    - Copy `.env.example` to `.env` (if provided) and fill in the required values, or create a `.env` file with:
+    - create `.env` file from  and copy into it the contents of `.env.example` and fill in the required values, or  change  the file name to `.env`    file:
       ```
-      POSTGRES_USER=postgres
-      POSTGRES_PASSWORD=yourpassword
-      POSTGRES_DB=WomensDeptDB
-      PGADMIN_DEFAULT_EMAIL=admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD=admin123
+      POSTGRES_USER=
+      POSTGRES_PASSWORD=
+      POSTGRES_DB=
+      PGADMIN_DEFAULT_EMAIL=
+      PGADMIN_DEFAULT_PASSWORD=
       ```
 
 3. **Start the services:**
