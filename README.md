@@ -8,7 +8,9 @@
 
 #### 3. I assume that you have a code editor installed (such as VSCode).
 
-#### 4. For the sake of simplicity, I assume there are no surgeries in this department, treatment plans are straightforward, blood work and analysis are not included, and the focus is on patient management and basic medical records. If this were a real-world application, the schema would be more complex and would require additional tables and relationships.
+### 4. I assume that you are using windows os and using postgresql locally.
+
+#### 5. For the sake of simplicity, I assume there are no surgeries in this department, treatment plans are straightforward, blood work and analysis are not included, and the focus is on patient management and basic medical records. If this were a real-world application, the schema would be more complex and would require additional tables and relationships.
 
 This project provides a ready-to-use PostgreSQL database and pgAdmin setup using Docker Compose. It includes all schema and data needed for the `WomensDeptDB` database.
 
@@ -116,6 +118,20 @@ WomensDeptAssignment/
 ├── .env
 └── README.md
 ```
+
+---
+
+## ⚠️ Security Notice
+
+For ease of use, this setup exposes the PostgreSQL database port to the host machine. **This is intended for local development and testing only.**
+
+**Do not use this configuration as-is in production.**
+
+- Always use strong, unique passwords for all database users.
+- If deploying in a less trusted environment, restrict access to the database port using a firewall or by changing the port mapping in `docker-compose.yml`.
+- Review and tighten the `conf/pg_hba.conf` file to allow only trusted users and authentication methods.
+- Never commit real secrets or credentials to the repository.
+- For production, further hardening and security measures are required.
 
 ---
 

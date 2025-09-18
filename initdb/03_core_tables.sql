@@ -13,7 +13,8 @@ BEGIN
     CREATE TYPE weekday AS ENUM
       ('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday');
   END IF;
-END$$;
+END
+$$;
 
 -- 1) Doctors
 CREATE TABLE IF NOT EXISTS doctors (
@@ -24,6 +25,18 @@ CREATE TABLE IF NOT EXISTS doctors (
   employment_status   TEXT NOT NULL DEFAULT 'Active'
     CHECK (employment_status IN ('Active','OnLeave','Terminated'))
 );
+
+INSERT INTO womens_dept.doctors (doctor_name, doctor_phone_number, specialization, employment_status) VALUES
+('Dr. Alice Smith', '0512345678', 'Cardiology', 'Active'),
+('Dr. Bob Johnson', '0522345678', 'Neurology', 'Active'),
+('Dr. Carol Williams', '0532345678', 'Orthopedics', 'Active'),
+('Dr. David Brown', '0542345678', 'Pediatrics', 'Active'),
+('Dr. Eva White', '0552345678', 'Radiology', 'Active'),
+('Dr. Frank Black', '0562345678', 'Surgery', 'Active'),
+('Dr. Grace Green', '0572345678', 'Dermatology', 'Active'),
+('Dr. Henry Blue', '0582345678', 'Psychiatry', 'Active'),
+('Dr. Irene Yellow', '0592345678', 'Anesthesiology', 'Active'),
+('Dr. Jack Red', '0502345678', 'Emergency Medicine', 'Active');
 
 -- 2) Nurses
 CREATE TABLE IF NOT EXISTS nurses (
