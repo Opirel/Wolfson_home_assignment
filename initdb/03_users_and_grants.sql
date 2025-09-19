@@ -1,5 +1,5 @@
 -- Use the schema first in this session
-SET search_path = womens_dept, public;
+SET search_path = womens_dept;
 
 
 DO $$
@@ -31,13 +31,8 @@ GRANT womens_dept_ro TO nurse_cohen_user;
 
 -- Quality-of-life: set default search_path for these users in this DB
 
--- GRANT womens_dept_rw TO app_backend;    -- removed duplicate
-GRANT womens_dept_ro TO analyst_ro;
-
--- Replace per-database ALTER ROLE statements (which referenced a non-existent DB)
--- with global role settings:
-ALTER ROLE app_backend SET search_path = womens_dept, public;
-ALTER ROLE analyst_ro SET search_path = womens_dept, public;
+ALTER ROLE app_backend SET search_path = 'womens_dept, public';
+ALTER ROLE analyst_ro SET search_path = 'womens_dept, public';
 
 -- Apply grants to existing objects (defaults only affect NEW tables)
 -- If tables already exist, explicitly grant now:
@@ -48,5 +43,30 @@ GRANT SELECT ON ALL SEQUENCES  IN SCHEMA womens_dept TO womens_dept_ro;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA womens_dept TO womens_dept_rw;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA womens_dept TO womens_dept_rw;
+
+-- ensure every session connecting to WomensDeptDB uses womens_dept first
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_database WHERE datname = 'WomensDeptDB') THEN
+    EXECUTE 'ALTER DATABASE "WomensDeptDB" SET search_path = ''womens_dept, public''';
+  END IF;
+END
+$$ LANGUAGE plpgsql;
+
+-- After creating roles/grants: ensure each login role has a persistent search_path
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN SELECT rolname FROM pg_roles WHERE rolcanlogin LOOP
+    -- idempotent: set role-level default to the desired textual search_path
+    BEGIN
+      EXECUTE format('ALTER ROLE %I SET search_path = %L', r.rolname, 'womens_dept, public');
+    EXCEPTION WHEN others THEN
+      -- ignore failures for roles we cannot alter in this context
+      RAISE NOTICE 'Could not set search_path for role %', r.rolname;
+    END;
+  END LOOP;
+END
+$$ LANGUAGE plpgsql;
 
 

@@ -1,31 +1,34 @@
--- ensure we insert into the correct schema
-SET search_path = womens_dept, public;
-
--- fail fast if core tables weren't created
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.tables
-    WHERE table_schema = 'womens_dept' AND table_name = 'doctors'
-  ) THEN
-    RAISE EXCEPTION 'Table womens_dept.doctors does not exist — check 03_core_tables.sql';
-  END IF;
-END$$;
+-- -- seed uses explicit schema qualification: womens_dept.<table>
 
 -- ---------- Doctors ----------
-INSERT INTO doctors (doctor_name, doctor_phone_number, specialization, employment_status) VALUES
- ('Dr. Miriam Levi',   '0523456781', 'Maternal-Fetal Medicine', 'Active'),
- ('Dr. Talia Rosen',   '0549876543', 'Gynecologic Oncology',     'Active'),
- ('Dr. Daniel Peretz', '0501234567', 'Obstetrics',               'Active'),
- ('Dr. Yael Shapira',  '0537654321', 'Breast Oncology',          'Active'),
- ('Dr. Ron Golan',     '0581122334', 'Urogynecology',            'Active'),
- ('Dr. Maya Bar-On',   '0559988776', 'Reproductive Endocrinology','Active'),
- ('Dr. Amir Cohen',    '0564433221', 'General Gynecology',       'Active'),
- ('Dr. Noga Adler',    '0575566778', 'Gynecologic Surgery',      'OnLeave')
-ON CONFLICT (doctor_phone_number) DO NOTHING;
+DO $$
+BEGIN
+  INSERT INTO womens_dept.doctors
+    (doctor_name, doctor_phone_number, doctor_sex, doctor_gender, specialization, employment_status)
+  VALUES
+    ('Dr. Miriam Levi',   '0523456781', 'Female', 'Female',     'Maternal-Fetal Medicine', 'Active'),
+    ('Dr. Talia Rosen',   '0549876543', 'Female', 'Female',     'Gynecologic Oncology',     'Active'),
+    ('Dr. Daniel Peretz', '0501234567', 'Male',   'Male',       'Obstetrics',              'Active'),
+    ('Dr. Yael Shapira',  '0537654321', 'Female', 'Female',     'Breast Oncology',         'Active'),
+    ('Dr. Ron Golan',     '0581122334', 'Male',   'Male',       'Urogynecology',           'Active'),
+    ('Dr. Maya Bar-On',   '0559988776', 'Female', 'Female',     'Reproductive Endocrinology','Active'),
+    ('Dr. Amir Cohen',    '0564433221', 'Male',   'Male',       'General Gynecology',      'Active'),
+    ('Dr. Noga Adler',    '0575566778', 'Female', 'Female',     'Gynecologic Surgery',     'OnLeave'),
+    ('Dr. Hila Katz',     '0522223344', 'Female', 'Female',     'Fertility',               'Active'),
+    ('Dr. Eitan Shamir',  '0543334455', 'Male',   'Male',       'Gynecologic Oncology',    'Active'),
+    ('Dr. Lior Ben Ami',  '0504445566', 'Male',   'Male',       'Obstetrics',              'Active'),
+    ('Dr. Noa Friedman',  '0535556677', 'Female', 'Female',     'Maternal-Fetal Medicine', 'Active')
+  ON CONFLICT (doctor_phone_number) DO UPDATE
+    SET doctor_name = EXCLUDED.doctor_name,
+        doctor_sex = EXCLUDED.doctor_sex,
+        doctor_gender = EXCLUDED.doctor_gender,
+        specialization = EXCLUDED.specialization,
+        employment_status = EXCLUDED.employment_status;
+END;
+$$ LANGUAGE plpgsql;
 
--- ---------- Nurses (includes the four you mentioned) ----------
-INSERT INTO nurses (nurse_name, nurse_phone_number, nurse_sex, nurse_gender, employment_status) VALUES
+-- ---------- Nurses (schema-qualified) ----------
+INSERT INTO womens_dept.nurses (nurse_name, nurse_phone_number, nurse_sex, nurse_gender, employment_status) VALUES
   ('Nurse Cohen',     '0521112233', 'Female','Female','Active'),
   ('Nurse Levi',      '0542223344', 'Female','Female','Active'),
   ('Nurse Shahar',    '0503334455', 'Female','Female','Active'),
@@ -48,41 +51,41 @@ INSERT INTO nurses (nurse_name, nurse_phone_number, nurse_sex, nurse_gender, emp
   ('Nurse Maayan',    '0530002233', 'Female','Female','Active')
 ON CONFLICT (nurse_phone_number) DO NOTHING;
 
--- ---------- Doctor schedule (Mon–Fri for active doctors) ----------
-INSERT INTO doctor_schedule (doctor_id, work_day)
-SELECT d.doctor_id, wd::weekday
-FROM doctors d
-CROSS JOIN (VALUES ('Monday'),('Tuesday'),('Wednesday'),('Thursday'),('Friday')) AS days(wd)
-WHERE d.employment_status = 'Active'
-ON CONFLICT (doctor_id, work_day) DO NOTHING;
+-- ---------- Doctor schedule (use schema-qualified tables) ----------
+INSERT INTO womens_dept.doctor_schedule (doctor_id, work_day)
+  SELECT d.doctor_id, wd::womens_dept.weekday
+  FROM womens_dept.doctors d
+  CROSS JOIN (VALUES ('Monday'),('Tuesday'),('Wednesday'),('Thursday'),('Friday')) AS days(wd)
+  WHERE d.employment_status = 'Active'
+  ON CONFLICT (doctor_id, work_day) DO NOTHING;
 
 -- Weekends for a couple of doctors
-INSERT INTO doctor_schedule (doctor_id, work_day)
-SELECT d.doctor_id, wd::weekday
-FROM doctors d
+INSERT INTO womens_dept.doctor_schedule (doctor_id, work_day)
+SELECT d.doctor_id, wd::womens_dept.weekday
+FROM womens_dept.doctors d
 JOIN (VALUES ('Saturday'),('Sunday')) AS w(wd) ON TRUE
 WHERE d.doctor_name IN ('Dr. Talia Rosen','Dr. Daniel Peretz')
 ON CONFLICT (doctor_id, work_day) DO NOTHING;
 
 -- ---------- Nurse schedule (staggered 5-on / 2-off) ----------
 -- Batch A: Mon–Fri
-INSERT INTO nurse_schedule (nurse_id, work_day)
-SELECT n.nurse_id, wd::weekday
-FROM nurses n
-CROSS JOIN (VALUES ('Monday'),('Tuesday'),('Wednesday'),('Thursday'),('Friday')) AS days(wd)
-WHERE n.nurse_id % 2 = 0 AND n.employment_status='Active'
-ON CONFLICT (nurse_id, work_day) DO NOTHING;
+INSERT INTO womens_dept.nurse_schedule (nurse_id, work_day)
+  SELECT n.nurse_id, wd::womens_dept.weekday
+  FROM womens_dept.nurses n
+  CROSS JOIN (VALUES ('Monday'),('Tuesday'),('Wednesday'),('Thursday'),('Friday')) AS days(wd)
+  WHERE n.employment_status = 'Active'
+  ON CONFLICT (nurse_id, work_day) DO NOTHING;
 
 -- Batch B: Wed–Sun
-INSERT INTO nurse_schedule (nurse_id, work_day)
-SELECT n.nurse_id, wd::weekday
-FROM nurses n
+INSERT INTO womens_dept.nurse_schedule (nurse_id, work_day)
+SELECT n.nurse_id, wd::womens_dept.weekday
+FROM womens_dept.nurses n
 CROSS JOIN (VALUES ('Wednesday'),('Thursday'),('Friday'),('Saturday'),('Sunday')) AS days(wd)
 WHERE n.nurse_id % 2 = 1 AND n.employment_status='Active'
 ON CONFLICT (nurse_id, work_day) DO NOTHING;
 
 -- ---------- Patients ----------
-INSERT INTO patient_info
+INSERT INTO womens_dept.patient_info
  (patient_national_id, patient_name, patient_phone_number, date_of_birth, blood_type,
   insurance_number, emergency_contact_name, emergency_contact_phone)
 VALUES
@@ -138,3 +141,13 @@ WHERE p.patient_id IN (
   SELECT patient_id FROM womens_dept.patient_info ORDER BY patient_id LIMIT 10
 )
 ON CONFLICT DO NOTHING;
+
+-- Example insert encrypting phone; replace :app_key with a runtime-provided key
+INSERT INTO womens_dept.doctors (doctor_name, doctor_phone_enc, employment_status)
+VALUES ('Dr Alice', pgp_sym_encrypt('0712345678', :app_key), 'Active');
+
+-- Example select (application supplies key and calls decrypt function)
+-- SELECT doctor_id, doctor_name, pgp_sym_decrypt(doctor_phone_enc, :app_key) AS phone FROM womens_dept.doctors;
+
+-- Alternative using helper functions:
+-- SELECT doctor_id, doctor_name, womens_dept.decrypt_text(doctor_phone_enc, :app_key) AS phone FROM womens_dept.doctors;

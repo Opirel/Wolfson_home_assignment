@@ -4,7 +4,7 @@
 
 -- Work in our schema (create if someone deleted it)
 CREATE SCHEMA IF NOT EXISTS womens_dept;
-SET search_path = womens_dept, public;
+SET search_path = womens_dept;
 
 -- 0) Weekday enum (create if missing)
 DO $$
@@ -16,51 +16,54 @@ BEGIN
 END
 $$;
 
--- 1) Doctors
-CREATE TABLE IF NOT EXISTS doctors (
-  doctor_id           INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  doctor_name         VARCHAR(100) NOT NULL,
-  doctor_phone_number CHAR(10) UNIQUE NOT NULL CHECK (doctor_phone_number ~ '^05[0-9]{8}$'),
-  specialization      VARCHAR(80),
-  employment_status   TEXT NOT NULL DEFAULT 'Active'
-    CHECK (employment_status IN ('Active','OnLeave','Terminated'))
+-- 1) ensure weekday enum exists (keep before any table using it)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_type t JOIN pg_namespace n ON t.typnamespace = n.oid
+    WHERE t.typname = 'weekday' AND n.nspname = 'womens_dept'
+  ) THEN
+    EXECUTE $type$
+      CREATE TYPE womens_dept.weekday AS ENUM (
+        'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'
+      );
+    $type$;
+  END IF;
+END
+$$ LANGUAGE plpgsql;
+
+-- 2) core tables: create doctors and nurses first (ensure these exist before schedules)
+CREATE TABLE IF NOT EXISTS womens_dept.doctors (
+  doctor_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  doctor_name TEXT NOT NULL,
+  doctor_phone_number TEXT UNIQUE,
+  doctor_sex TEXT,
+  doctor_gender TEXT,
+  specialization TEXT,
+  employment_status TEXT
 );
 
-INSERT INTO womens_dept.doctors (doctor_name, doctor_phone_number, specialization, employment_status) VALUES
-('Dr. Alice Smith', '0512345678', 'Cardiology', 'Active'),
-('Dr. Bob Johnson', '0522345678', 'Neurology', 'Active'),
-('Dr. Carol Williams', '0532345678', 'Orthopedics', 'Active'),
-('Dr. David Brown', '0542345678', 'Pediatrics', 'Active'),
-('Dr. Eva White', '0552345678', 'Radiology', 'Active'),
-('Dr. Frank Black', '0562345678', 'Surgery', 'Active'),
-('Dr. Grace Green', '0572345678', 'Dermatology', 'Active'),
-('Dr. Henry Blue', '0582345678', 'Psychiatry', 'Active'),
-('Dr. Irene Yellow', '0592345678', 'Anesthesiology', 'Active'),
-('Dr. Jack Red', '0502345678', 'Emergency Medicine', 'Active');
-
--- 2) Nurses
-CREATE TABLE IF NOT EXISTS nurses (
-  nurse_id           INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nurse_name         VARCHAR(100) NOT NULL,
-  nurse_phone_number CHAR(10) UNIQUE NOT NULL CHECK (nurse_phone_number ~ '^05[0-9]{8}$'),
-  nurse_sex          TEXT CHECK (nurse_sex IN ('Male','Female','Intersex','Unknown')),
-  nurse_gender       TEXT CHECK (nurse_gender IN ('Male','Female','Nonbinary','Other','PreferNotToSay','Unknown')),
-  employment_status  TEXT NOT NULL DEFAULT 'Active'
-    CHECK (employment_status IN ('Active','OnLeave','Terminated'))
+CREATE TABLE IF NOT EXISTS womens_dept.nurses (
+  nurse_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  nurse_name TEXT NOT NULL,
+  nurse_phone_number TEXT UNIQUE,
+  nurse_sex TEXT,
+  nurse_gender TEXT,
+  employment_status TEXT
 );
 
--- 3) Weekly schedules (one row per person per day)
-CREATE TABLE IF NOT EXISTS doctor_schedule (
+-- 3) schedule tables: reference namespaced tables and namespaced enum
+CREATE TABLE IF NOT EXISTS womens_dept.doctor_schedule (
   schedule_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  doctor_id   INT NOT NULL REFERENCES doctors(doctor_id) ON DELETE CASCADE,
-  work_day    weekday NOT NULL,
+  doctor_id   INT NOT NULL REFERENCES womens_dept.doctors(doctor_id) ON DELETE CASCADE,
+  work_day    womens_dept.weekday NOT NULL,
   UNIQUE (doctor_id, work_day)
 );
 
-CREATE TABLE IF NOT EXISTS nurse_schedule (
+CREATE TABLE IF NOT EXISTS womens_dept.nurse_schedule (
   schedule_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nurse_id    INT NOT NULL REFERENCES nurses(nurse_id) ON DELETE CASCADE,
-  work_day    weekday NOT NULL,
+  nurse_id    INT NOT NULL REFERENCES womens_dept.nurses(nurse_id) ON DELETE CASCADE,
+  work_day    womens_dept.weekday NOT NULL,
   UNIQUE (nurse_id, work_day)
 );
 
@@ -109,4 +112,22 @@ CREATE TABLE IF NOT EXISTS patient_admissions (
     REFERENCES wards_and_rooms(ward, room, bed)
       ON UPDATE CASCADE ON DELETE RESTRICT
 );
+
+-- add encrypted columns (bytea) and helper wrapper functions
+ALTER TABLE IF EXISTS womens_dept.doctors
+  ADD COLUMN IF NOT EXISTS doctor_phone_enc bytea;
+
+ALTER TABLE IF EXISTS womens_dept.nurses
+  ADD COLUMN IF NOT EXISTS nurse_phone_enc bytea;
+
+-- helper SQL functions that accept a key (caller supplies key at runtime)
+CREATE OR REPLACE FUNCTION womens_dept.encrypt_text(plain text, key text) RETURNS bytea AS $$
+  SELECT pgp_sym_encrypt(plain, key);
+$$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION womens_dept.decrypt_text(enc bytea, key text) RETURNS text AS $$
+  SELECT pgp_sym_decrypt(enc, key);
+$$ LANGUAGE SQL IMMUTABLE;
+
+-- optional convenience view that requires key at runtime via session parameter ( safer: pass key to functions )
 

@@ -1,5 +1,3 @@
-SET search_path = womens_dept, public;
-
 CREATE SCHEMA IF NOT EXISTS womens_dept;
 
 CREATE ROLE womens_dept_rw;   -- read/write bucket
@@ -21,3 +19,5 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA womens_dept
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA womens_dept
   GRANT SELECT ON SEQUENCES TO womens_dept_ro;
+
+
